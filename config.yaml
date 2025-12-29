@@ -1,3 +1,6 @@
+server:
+  port: ":8081"
+
 scraper:
   instance: nitter.privacyredirect.com
   accounts:
@@ -16,4 +19,9 @@ storage:
 
 classifier:
   api_key: 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
-  model: mistralai/devstral-small:free
+  model: mistralai/devstral-2512:free
+
+notifier:
+  telegram_token: 8163668506:AAG0KPUNHTlXXUlPcu8k6ZXY4Ehgg5QjFfI
+  telegram_chat_ids:
+    - "5127725261"

@@ -9,10 +9,16 @@ import (
 )
 
 type Config struct {
+	Server     ServerConfig     `koanf:"server"`
 	Scraper    ScraperConfig    `koanf:"scraper"`
 	Queue      QueueConfig      `koanf:"queue"`
 	Storage    StorageConfig    `koanf:"storage"`
 	Classifier ClassifierConfig `koanf:"classifier"`
+	Notifier   NotifierConfig   `koanf:"notifier"`
+}
+
+type ServerConfig struct {
+	Port string `koanf:"port"`
 }
 
 type ScraperConfig struct {
@@ -34,6 +40,11 @@ type StorageConfig struct {
 type ClassifierConfig struct {
 	APIKey string `koanf:"api_key"`
 	Model  string `koanf:"model"`
+}
+
+type NotifierConfig struct {
+	TelegramToken   string   `koanf:"telegram_token"`
+	TelegramChatIDs []string `koanf:"telegram_chat_ids"`
 }
 
 func Load() (*Config, error) {

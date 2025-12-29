@@ -9,6 +9,7 @@ import (
 
 	"tokenlaunch/internal/classifier"
 	"tokenlaunch/internal/config"
+	"tokenlaunch/internal/notifier"
 	"tokenlaunch/internal/queue"
 	"tokenlaunch/internal/storage"
 	"tokenlaunch/internal/worker"
@@ -33,8 +34,9 @@ func main() {
 	defer consumer.Close()
 
 	cl := classifier.NewOpenRouter(cfg.Classifier.APIKey, cfg.Classifier.Model)
+	nt := notifier.NewTelegram(cfg.Notifier.TelegramToken, cfg.Notifier.TelegramChatIDs)
 
-	w := worker.NewConsumer(consumer, repo, cl)
+	w := worker.NewConsumer(consumer, repo, cl, nt)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
