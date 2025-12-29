@@ -55,6 +55,7 @@ func fetchTweets(instance, username string) ([]*gofeed.Item, error) {
 
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "curl/8.0")
+	req.Header.Set("Accept", "application/rss+xml, application/xml, text/xml, */*")
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
