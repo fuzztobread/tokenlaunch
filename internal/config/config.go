@@ -1,63 +1,87 @@
 package config
 
 import (
+	"os"
+	"strings"
 	"time"
 
-	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 )
 
 type Config struct {
-	Server     ServerConfig     `koanf:"server"`
-	Scraper    ScraperConfig    `koanf:"scraper"`
-	Queue      QueueConfig      `koanf:"queue"`
-	Storage    StorageConfig    `koanf:"storage"`
-	Classifier ClassifierConfig `koanf:"classifier"`
-	Notifier   NotifierConfig   `koanf:"notifier"`
+	Server     ServerConfig
+	Scraper    ScraperConfig
+	Queue      QueueConfig
+	Storage    StorageConfig
+	Classifier ClassifierConfig
+	Notifier   NotifierConfig
 }
 
 type ServerConfig struct {
-	Port string `koanf:"port"`
+	Port string
 }
 
 type ScraperConfig struct {
-	Instance string        `koanf:"instance"`
-	Accounts []string      `koanf:"accounts"`
-	Interval time.Duration `koanf:"interval"`
+	Instance string
+	Accounts []string
+	Interval time.Duration
 }
 
 type QueueConfig struct {
-	Brokers []string `koanf:"brokers"`
-	Topic   string   `koanf:"topic"`
-	GroupID string   `koanf:"group_id"`
+	Brokers []string
+	Topic   string
+	GroupID string
 }
 
 type StorageConfig struct {
-	DSN string `koanf:"dsn"`
+	DSN string
 }
 
 type ClassifierConfig struct {
-	APIKey string `koanf:"api_key"`
-	Model  string `koanf:"model"`
+	APIKey string
+	Model  string
 }
 
 type NotifierConfig struct {
-	TelegramToken   string   `koanf:"telegram_token"`
-	TelegramChatIDs []string `koanf:"telegram_chat_ids"`
+	TelegramToken   string
+	TelegramChatIDs []string
 }
 
 func Load() (*Config, error) {
 	k := koanf.New(".")
 
-	if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
+	envPath := os.Getenv("ENV_PATH")
+	if envPath == "" {
+		envPath = ".env"
+	}
+
+	parser := dotenv.ParserEnv("", "_", strings.ToLower)
+
+	if err := k.Load(file.Provider(envPath), parser); err != nil {
 		return nil, err
 	}
 
 	cfg := &Config{}
-	if err := k.Unmarshal("", cfg); err != nil {
-		return nil, err
-	}
+
+	cfg.Server.Port = k.String("server.port")
+
+	cfg.Scraper.Instance = k.String("scraper.instance")
+	cfg.Scraper.Accounts = strings.Split(k.String("scraper.accounts"), ",")
+	cfg.Scraper.Interval = k.Duration("scraper.interval")
+
+	cfg.Queue.Brokers = strings.Split(k.String("queue.brokers"), ",")
+	cfg.Queue.Topic = k.String("queue.topic")
+	cfg.Queue.GroupID = k.String("queue.group.id")
+
+	cfg.Storage.DSN = k.String("storage.dsn")
+
+	cfg.Classifier.APIKey = k.String("classifier.api.key")
+	cfg.Classifier.Model = k.String("classifier.model")
+
+	cfg.Notifier.TelegramToken = k.String("notifier.telegram.token")
+	cfg.Notifier.TelegramChatIDs = strings.Split(k.String("notifier.telegram.chat.ids"), ",")
 
 	return cfg, nil
 }
