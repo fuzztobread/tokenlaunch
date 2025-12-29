@@ -1,7 +1,9 @@
 package worker
 
 import (
+	"bytes"
 	"context"
+	"html/template"
 	"log"
 
 	"tokenlaunch/internal/classifier"
@@ -11,19 +13,39 @@ import (
 	"tokenlaunch/internal/storage"
 )
 
-type Consumer struct {
-	consumer   queue.Consumer
-	repo       storage.MessageRepository
-	classifier classifier.Classifier
-	notifier   notifier.Notifier
+type Broadcaster interface {
+	Broadcast(msg string)
 }
 
-func NewConsumer(c queue.Consumer, r storage.MessageRepository, cl classifier.Classifier, n notifier.Notifier) *Consumer {
+type Consumer struct {
+	consumer    queue.Consumer
+	repo        storage.MessageRepository
+	classifier  classifier.Classifier
+	notifier    notifier.Notifier
+	broadcaster Broadcaster
+	feedTmpl    *template.Template
+}
+
+func NewConsumer(c queue.Consumer, r storage.MessageRepository, cl classifier.Classifier, n notifier.Notifier, b Broadcaster) *Consumer {
+	tmpl := template.Must(template.New("feed-item").Parse(`
+<div class="item {{.Classification}}">
+    <div class="item-head">
+        <div class="item-author">@{{.Username}}</div>
+        <div class="item-time">{{.TimeAgo}}</div>
+    </div>
+    <div class="item-body">{{.Content}}</div>
+    {{if .Classification}}
+    <div class="tag {{.Classification}}">{{.Classification}}</div>
+    {{end}}
+</div>`))
+
 	return &Consumer{
-		consumer:   c,
-		repo:       r,
-		classifier: cl,
-		notifier:   n,
+		consumer:    c,
+		repo:        r,
+		classifier:  cl,
+		notifier:    n,
+		broadcaster: b,
+		feedTmpl:    tmpl,
 	}
 }
 
@@ -44,7 +66,23 @@ func (w *Consumer) handleMessage(msg domain.Message) error {
 	result, err := w.classifier.Classify(ctx, msg)
 	if err != nil {
 		log.Printf("[ERROR] classify: %v", err)
-		return nil
+		result = &classifier.Result{Classification: classifier.ClassificationNone}
+	}
+
+	view := map[string]string{
+		"Username":       msg.Username,
+		"Content":        msg.Content,
+		"TimeAgo":        "just now",
+		"Classification": string(result.Classification),
+	}
+
+	if result.Classification == classifier.ClassificationNone {
+		view["Classification"] = ""
+	}
+
+	var buf bytes.Buffer
+	if err := w.feedTmpl.Execute(&buf, view); err == nil {
+		w.broadcaster.Broadcast(buf.String())
 	}
 
 	if result.Classification != classifier.ClassificationNone {
