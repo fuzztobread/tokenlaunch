@@ -10,12 +10,18 @@ import (
 
 type Config struct {
 	Scraper ScraperConfig `koanf:"scraper"`
+	Queue   QueueConfig   `koanf:"queue"`
 }
 
 type ScraperConfig struct {
 	Instance string        `koanf:"instance"`
 	Accounts []string      `koanf:"accounts"`
 	Interval time.Duration `koanf:"interval"`
+}
+
+type QueueConfig struct {
+	Brokers []string `koanf:"brokers"`
+	Topic   string   `koanf:"topic"`
 }
 
 func Load() (*Config, error) {

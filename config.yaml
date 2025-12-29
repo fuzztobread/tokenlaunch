@@ -4,3 +4,8 @@ scraper:
     - elonmusk
     - VitalikButerin
   interval: 30s
+
+queue:
+  brokers:
+    - localhost:9092
+  topic: tweets
