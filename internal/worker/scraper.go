@@ -15,6 +15,7 @@ type Scraper struct {
 	publisher queue.Publisher
 	accounts  []string
 	interval  time.Duration
+	seen      map[string]bool
 }
 
 func NewScraper(s scraper.Scraper, p queue.Publisher, cfg config.ScraperConfig) *Scraper {
@@ -23,6 +24,7 @@ func NewScraper(s scraper.Scraper, p queue.Publisher, cfg config.ScraperConfig) 
 		publisher: p,
 		accounts:  cfg.Accounts,
 		interval:  cfg.Interval,
+		seen:      make(map[string]bool),
 	}
 }
 
@@ -51,6 +53,11 @@ func (w *Scraper) scrapeAll(ctx context.Context) {
 		}
 
 		for _, msg := range messages {
+			if w.seen[msg.ID] {
+				continue
+			}
+			w.seen[msg.ID] = true
+
 			if err := w.publisher.Publish(ctx, msg); err != nil {
 				log.Printf("[ERROR] publish: %v", err)
 				continue
