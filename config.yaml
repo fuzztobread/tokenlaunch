@@ -1,0 +1,6 @@
+scraper:
+  instance: nitter.privacyredirect.com
+  accounts:
+    - elonmusk
+    - VitalikButerin
+  interval: 30s
