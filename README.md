@@ -22,7 +22,7 @@ Scraper -> Kafka -> Consumer -> Classifier (LLM) -> Notifier (Telegram)
 
 1. Clone and configure:
 ```bash
-git clone https://github.com/yourusername/tokenlaunch.git
+git clone https://github.com/fuzztobread/tokenlaunch.git
 cd tokenlaunch
 cp .env.example .env
 ```
