@@ -9,8 +9,10 @@ import (
 )
 
 type Config struct {
-	Scraper ScraperConfig `koanf:"scraper"`
-	Queue   QueueConfig   `koanf:"queue"`
+	Scraper    ScraperConfig    `koanf:"scraper"`
+	Queue      QueueConfig      `koanf:"queue"`
+	Storage    StorageConfig    `koanf:"storage"`
+	Classifier ClassifierConfig `koanf:"classifier"`
 }
 
 type ScraperConfig struct {
@@ -22,6 +24,16 @@ type ScraperConfig struct {
 type QueueConfig struct {
 	Brokers []string `koanf:"brokers"`
 	Topic   string   `koanf:"topic"`
+	GroupID string   `koanf:"group_id"`
+}
+
+type StorageConfig struct {
+	DSN string `koanf:"dsn"`
+}
+
+type ClassifierConfig struct {
+	APIKey string `koanf:"api_key"`
+	Model  string `koanf:"model"`
 }
 
 func Load() (*Config, error) {

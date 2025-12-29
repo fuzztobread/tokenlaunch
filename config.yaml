@@ -9,3 +9,11 @@ queue:
   brokers:
     - localhost:9092
   topic: tweets
+  group_id: tokenlaunch-consumer
+
+storage:
+  dsn: postgres://postgres:postgres@localhost:5432/tokenlaunch?sslmode=disable
+
+classifier:
+  api_key: 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
+  model: mistralai/devstral-small:free
