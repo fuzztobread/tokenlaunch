@@ -1,0 +1,22 @@
+{{define "feed"}}
+{{range .}}
+{{template "feed-item" .}}
+{{else}}
+<div class="empty">
+    <div class="empty-text">Waiting for signals</div>
+</div>
+{{end}}
+{{end}}
+
+{{define "feed-item"}}
+<div class="item {{.Classification}}">
+    <div class="item-head">
+        <div class="item-author">@{{.Username}}</div>
+        <div class="item-time">{{.TimeAgo}}</div>
+    </div>
+    <div class="item-body">{{.Content}}</div>
+    {{if .Classification}}
+    <div class="tag {{.Classification}}">{{.Classification}}</div>
+    {{end}}
+</div>
+{{end}}
