@@ -51,6 +51,16 @@ func (p *Postgres) Save(ctx context.Context, msg domain.Message) error {
 	return err
 }
 
+func (p *Postgres) UpdateClassification(ctx context.Context, id, classification, token string, confidence float64) error {
+	query := `
+		UPDATE messages 
+		SET classification = $2, token = $3, confidence = $4
+		WHERE id = $1
+	`
+	_, err := p.db.ExecContext(ctx, query, id, classification, token, confidence)
+	return err
+}
+
 func (p *Postgres) FindByID(ctx context.Context, id string) (*domain.Message, error) {
 	query := `
 		SELECT id, external_id, author, username, content, source, created_at
@@ -116,4 +126,16 @@ func (p *Postgres) Exists(ctx context.Context, id string) (bool, error) {
 	var exists bool
 	err := p.db.QueryRowContext(ctx, query, id).Scan(&exists)
 	return exists, err
+}
+
+func (p *Postgres) GetStats(ctx context.Context) (total, launches, endorsements int, err error) {
+	query := `
+		SELECT 
+			COUNT(*) as total,
+			COUNT(*) FILTER (WHERE classification = 'launch') as launches,
+			COUNT(*) FILTER (WHERE classification = 'endorsement') as endorsements
+		FROM messages
+	`
+	err = p.db.QueryRowContext(ctx, query).Scan(&total, &launches, &endorsements)
+	return
 }

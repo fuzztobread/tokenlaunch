@@ -226,6 +226,35 @@
             color: var(--text-ghost);
         }
         
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--surface);
+            border: 1px solid var(--mint);
+            color: var(--mint);
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeOut 4s forwards;
+        }
+        
+        @keyframes fadeOut {
+            0%, 80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        
         @media (max-width: 640px) {
             header { padding: 0 24px; }
             main { padding: 24px 16px; }
@@ -241,7 +270,7 @@
     </header>
 
     <main>
-        <div class="metrics" hx-get="/api/stats" hx-trigger="load, every 10s" hx-swap="innerHTML">
+        <div class="metrics" hx-get="/api/stats" hx-trigger="load, every 5s" hx-swap="innerHTML">
             {{template "stats" .Stats}}
         </div>
 
@@ -259,6 +288,8 @@
             </div>
         </div>
     </main>
+    
+    <div id="toast" class="toast"></div>
 </body>
 </html>
 {{end}}

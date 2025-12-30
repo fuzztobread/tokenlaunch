@@ -22,7 +22,7 @@ func NewOpenRouter(apiKey, model string) *OpenRouter {
 	return &OpenRouter{
 		apiKey: apiKey,
 		model:  model,
-		client: &http.Client{Timeout: 30 * time.Second},
+		client: &http.Client{Timeout: 60 * time.Second},
 	}
 }
 

@@ -52,11 +52,18 @@ func (w *Scraper) scrapeAll(ctx context.Context) {
 			continue
 		}
 
+		log.Printf("[SCRAPE] @%s: fetched %d tweets", account, len(messages))
+
+		newCount := 0
+		dupCount := 0
+
 		for _, msg := range messages {
 			if w.seen[msg.ID] {
+				dupCount++
 				continue
 			}
 			w.seen[msg.ID] = true
+			newCount++
 
 			if err := w.publisher.Publish(ctx, msg); err != nil {
 				log.Printf("[ERROR] publish: %v", err)
@@ -64,6 +71,8 @@ func (w *Scraper) scrapeAll(ctx context.Context) {
 			}
 			log.Printf("[QUEUED] @%s: %s", msg.Username, truncate(msg.Content, 60))
 		}
+
+		log.Printf("[STATS] @%s: new=%d, duplicates=%d, seen_total=%d", account, newCount, dupCount, len(w.seen))
 	}
 }
 

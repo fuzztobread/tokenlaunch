@@ -139,8 +139,11 @@ func (s *Server) index(c echo.Context) error {
 }
 
 func (s *Server) stats(c echo.Context) error {
-	messages, _ := s.repo.FindAll(c.Request().Context(), 1000, 0)
-	stats := Stats{Total: len(messages)}
+	total, launches, endorsements, err := s.repo.GetStats(c.Request().Context())
+	if err != nil {
+		total, launches, endorsements = 0, 0, 0
+	}
+	stats := Stats{Total: total, Launches: launches, Endorsements: endorsements}
 	return s.render(c, "stats", stats)
 }
 
