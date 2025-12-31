@@ -15,6 +15,17 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: tokenlaunch-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   kafka:
     image: apache/kafka:latest
     container_name: tokenlaunch-kafka
@@ -52,6 +63,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   scraper:
@@ -64,7 +77,10 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:

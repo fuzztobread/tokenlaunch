@@ -5,25 +5,27 @@ import (
 	"log"
 	"time"
 
-	"tokenlaunch/internal/config"
 	"tokenlaunch/internal/queue"
+	"tokenlaunch/internal/redis"
 	"tokenlaunch/internal/scraper"
 )
 
 type Scraper struct {
 	scraper   scraper.Scraper
 	publisher queue.Publisher
-	accounts  []string
+	redis     *redis.Client
+	instance  string
 	interval  time.Duration
 	seen      map[string]bool
 }
 
-func NewScraper(s scraper.Scraper, p queue.Publisher, cfg config.ScraperConfig) *Scraper {
+func NewScraper(s scraper.Scraper, p queue.Publisher, r *redis.Client, instance string, interval time.Duration) *Scraper {
 	return &Scraper{
 		scraper:   s,
 		publisher: p,
-		accounts:  cfg.Accounts,
-		interval:  cfg.Interval,
+		redis:     r,
+		instance:  instance,
+		interval:  interval,
 		seen:      make(map[string]bool),
 	}
 }
@@ -45,7 +47,18 @@ func (w *Scraper) Start(ctx context.Context) {
 }
 
 func (w *Scraper) scrapeAll(ctx context.Context) {
-	for _, account := range w.accounts {
+	accounts, err := w.redis.GetAccounts(ctx)
+	if err != nil {
+		log.Printf("[ERROR] failed to get accounts from redis: %v", err)
+		return
+	}
+
+	if len(accounts) == 0 {
+		log.Printf("[SCRAPE] no accounts configured")
+		return
+	}
+
+	for _, account := range accounts {
 		messages, err := w.scraper.Scrape(ctx, account)
 		if err != nil {
 			log.Printf("[ERROR] @%s: %v", account, err)

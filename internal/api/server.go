@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"tokenlaunch/internal/redis"
 	"tokenlaunch/internal/storage"
 )
 
@@ -20,6 +22,7 @@ var templateFS embed.FS
 type Server struct {
 	echo      *echo.Echo
 	repo      storage.MessageRepository
+	redis     *redis.Client
 	templates *template.Template
 	sse       *SSEBroker
 }
@@ -73,7 +76,11 @@ type MessageView struct {
 	TimeAgo        string
 }
 
-func NewServer(repo storage.MessageRepository) *Server {
+type AccountView struct {
+	Username string
+}
+
+func NewServer(repo storage.MessageRepository, rdb *redis.Client) *Server {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -86,6 +93,7 @@ func NewServer(repo storage.MessageRepository) *Server {
 	s := &Server{
 		echo:      e,
 		repo:      repo,
+		redis:     rdb,
 		templates: tmpl,
 		sse:       NewSSEBroker(),
 	}
@@ -102,6 +110,11 @@ func (s *Server) routes() {
 	s.echo.GET("/api/messages", s.getMessages)
 	s.echo.GET("/api/messages/:id", s.getMessage)
 	s.echo.GET("/api/events", s.events)
+
+	// Account management
+	s.echo.GET("/api/accounts", s.getAccounts)
+	s.echo.POST("/api/accounts", s.addAccount)
+	s.echo.DELETE("/api/accounts/:username", s.removeAccount)
 }
 
 func (s *Server) Start(addr string) error {
@@ -118,6 +131,7 @@ func (s *Server) Broadcast(msg string) {
 
 func (s *Server) index(c echo.Context) error {
 	messages, _ := s.repo.FindAll(c.Request().Context(), 20, 0)
+	accounts, _ := s.redis.GetAccounts(c.Request().Context())
 
 	views := make([]MessageView, len(messages))
 	for i, m := range messages {
@@ -130,9 +144,17 @@ func (s *Server) index(c echo.Context) error {
 		}
 	}
 
+	accountViews := make([]AccountView, len(accounts))
+	for i, a := range accounts {
+		accountViews[i] = AccountView{Username: a}
+	}
+
+	total, launches, endorsements, _ := s.repo.GetStats(c.Request().Context())
+
 	data := map[string]any{
-		"Stats":    Stats{Total: len(messages)},
+		"Stats":    Stats{Total: total, Launches: launches, Endorsements: endorsements},
 		"Messages": views,
+		"Accounts": accountViews,
 	}
 
 	return s.render(c, "index.html", data)
@@ -171,20 +193,73 @@ func (s *Server) getMessage(c echo.Context) error {
 	return c.JSON(http.StatusOK, msg)
 }
 
+func (s *Server) getAccounts(c echo.Context) error {
+	accounts, err := s.redis.GetAccounts(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+	return s.render(c, "accounts", accounts)
+}
+
+func (s *Server) addAccount(c echo.Context) error {
+	username := strings.TrimSpace(c.FormValue("username"))
+	username = strings.TrimPrefix(username, "@")
+
+	if username == "" {
+		return c.HTML(http.StatusBadRequest, `<div class="error">Username required</div>`)
+	}
+
+	exists, _ := s.redis.AccountExists(c.Request().Context(), username)
+	if exists {
+		return c.HTML(http.StatusConflict, `<div class="error">Already tracking</div>`)
+	}
+
+	if err := s.redis.AddAccount(c.Request().Context(), username); err != nil {
+		return c.HTML(http.StatusInternalServerError, `<div class="error">Failed to add</div>`)
+	}
+
+	// Return updated account list
+	accounts, _ := s.redis.GetAccounts(c.Request().Context())
+	return s.render(c, "accounts", accounts)
+}
+
+func (s *Server) removeAccount(c echo.Context) error {
+	username := c.Param("username")
+
+	if err := s.redis.RemoveAccount(c.Request().Context(), username); err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	// Return updated account list
+	accounts, _ := s.redis.GetAccounts(c.Request().Context())
+	return s.render(c, "accounts", accounts)
+}
+
 func (s *Server) events(c echo.Context) error {
 	c.Response().Header().Set("Content-Type", "text/event-stream")
 	c.Response().Header().Set("Cache-Control", "no-cache")
 	c.Response().Header().Set("Connection", "keep-alive")
+	c.Response().Header().Set("X-Accel-Buffering", "no")
 
 	ch := s.sse.Subscribe()
 	defer s.sse.Unsubscribe(ch)
+
+	// Send initial ping
+	fmt.Fprintf(c.Response(), ": ping\n\n")
+	c.Response().Flush()
 
 	for {
 		select {
 		case <-c.Request().Context().Done():
 			return nil
 		case msg := <-ch:
-			fmt.Fprintf(c.Response(), "event: message\ndata: %s\n\n", msg)
+			// SSE format: event name + data lines
+			fmt.Fprintf(c.Response(), "event: message\n")
+			lines := strings.Split(msg, "\n")
+			for _, line := range lines {
+				fmt.Fprintf(c.Response(), "data: %s\n", line)
+			}
+			fmt.Fprintf(c.Response(), "\n")
 			c.Response().Flush()
 		}
 	}

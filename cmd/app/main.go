@@ -12,6 +12,7 @@ import (
 	"tokenlaunch/internal/config"
 	"tokenlaunch/internal/notifier"
 	"tokenlaunch/internal/queue"
+	"tokenlaunch/internal/redis"
 	"tokenlaunch/internal/storage"
 	"tokenlaunch/internal/worker"
 )
@@ -28,6 +29,12 @@ func main() {
 	}
 	defer repo.Close()
 
+	rdb, err := redis.New(cfg.Redis.Addr)
+	if err != nil {
+		log.Fatalf("failed to connect to redis: %v", err)
+	}
+	defer rdb.Close()
+
 	consumer, err := queue.NewKafkaConsumer(cfg.Queue.Brokers, cfg.Queue.GroupID, cfg.Queue.Topic)
 	if err != nil {
 		log.Fatalf("failed to create consumer: %v", err)
@@ -37,7 +44,7 @@ func main() {
 	cl := classifier.NewOpenRouter(cfg.Classifier.APIKey, cfg.Classifier.Model)
 	nt := notifier.NewTelegram(cfg.Notifier.TelegramToken, cfg.Notifier.TelegramChatIDs)
 
-	server := api.NewServer(repo)
+	server := api.NewServer(repo, rdb)
 
 	w := worker.NewConsumer(consumer, repo, cl, nt, server)
 

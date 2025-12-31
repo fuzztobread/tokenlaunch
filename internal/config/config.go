@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Server     ServerConfig
 	Scraper    ScraperConfig
+	Redis      RedisConfig
 	Queue      QueueConfig
 	Storage    StorageConfig
 	Classifier ClassifierConfig
@@ -25,8 +26,11 @@ type ServerConfig struct {
 
 type ScraperConfig struct {
 	Instance string
-	Accounts []string
 	Interval time.Duration
+}
+
+type RedisConfig struct {
+	Addr string
 }
 
 type QueueConfig struct {
@@ -68,8 +72,9 @@ func Load() (*Config, error) {
 	cfg.Server.Port = k.String("server.port")
 
 	cfg.Scraper.Instance = k.String("scraper.instance")
-	cfg.Scraper.Accounts = strings.Split(k.String("scraper.accounts"), ",")
 	cfg.Scraper.Interval = k.Duration("scraper.interval")
+
+	cfg.Redis.Addr = k.String("redis.addr")
 
 	cfg.Queue.Brokers = strings.Split(k.String("queue.brokers"), ",")
 	cfg.Queue.Topic = k.String("queue.topic")

@@ -87,6 +87,18 @@
             padding: 48px 24px;
         }
         
+        .grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 24px;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
         .metrics {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -94,7 +106,7 @@
             background: var(--border);
             border-radius: 12px;
             overflow: hidden;
-            margin-bottom: 48px;
+            margin-bottom: 24px;
         }
         
         .metric {
@@ -120,6 +132,134 @@
         
         .metric-value.mint { color: var(--mint); }
         .metric-value.blue { color: var(--blue); }
+        
+        .panel {
+            background: var(--surface);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .panel-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .panel-badge {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-ghost);
+            background: var(--elevated);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        
+        .accounts-form {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+        
+        .accounts-input {
+            flex: 1;
+            background: var(--elevated);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .accounts-input::placeholder {
+            color: var(--text-ghost);
+        }
+        
+        .accounts-input:focus {
+            border-color: var(--mint);
+        }
+        
+        .accounts-btn {
+            background: var(--mint);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--void);
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .accounts-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .accounts-list {
+            padding: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        
+        .accounts-list::-webkit-scrollbar { width: 0; }
+        
+        .account-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        
+        .account-item:hover {
+            background: var(--elevated);
+        }
+        
+        .account-name {
+            font-size: 13px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .account-remove {
+            background: none;
+            border: none;
+            color: var(--text-ghost);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        
+        .account-remove:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+        
+        .accounts-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-ghost);
+            font-size: 13px;
+        }
         
         .feed {
             background: var(--surface);
@@ -255,9 +395,16 @@
             100% { opacity: 0; transform: translateY(20px); }
         }
         
-        @media (max-width: 640px) {
+        .error {
+            color: #ef4444;
+            font-size: 12px;
+            padding: 8px 12px;
+        }
+        
+        @media (max-width: 768px) {
             header { padding: 0 24px; }
             main { padding: 24px 16px; }
+            .grid { grid-template-columns: 1fr; }
             .metrics { grid-template-columns: 1fr; }
             .metric-value { font-size: 32px; }
         }
@@ -274,17 +421,35 @@
             {{template "stats" .Stats}}
         </div>
 
-        <div class="feed">
-            <div class="feed-top">
-                <div class="feed-title">Activity</div>
-                <div class="feed-badge">STREAM</div>
+        <div class="grid">
+            <div class="sidebar">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Tracking</div>
+                        <div class="panel-badge">ACCOUNTS</div>
+                    </div>
+                    <form class="accounts-form" hx-post="/api/accounts" hx-target="#accounts-list" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+                        <input type="text" name="username" class="accounts-input" placeholder="@username" autocomplete="off">
+                        <button type="submit" class="accounts-btn">Add</button>
+                    </form>
+                    <div id="accounts-list" class="accounts-list">
+                        {{template "accounts" .Accounts}}
+                    </div>
+                </div>
             </div>
-            <div class="feed-list" 
-                 hx-ext="sse" 
-                 sse-connect="/api/events" 
-                 sse-swap="message" 
-                 hx-swap="afterbegin">
-                {{template "feed" .Messages}}
+
+            <div class="feed">
+                <div class="feed-top">
+                    <div class="feed-title">Activity</div>
+                    <div class="feed-badge">STREAM</div>
+                </div>
+                <div class="feed-list" 
+                     hx-ext="sse" 
+                     sse-connect="/api/events" 
+                     sse-swap="message" 
+                     hx-swap="afterbegin">
+                    {{template "feed" .Messages}}
+                </div>
             </div>
         </div>
     </main>

@@ -9,6 +9,7 @@ import (
 
 	"tokenlaunch/internal/config"
 	"tokenlaunch/internal/queue"
+	"tokenlaunch/internal/redis"
 	"tokenlaunch/internal/scraper"
 	"tokenlaunch/internal/worker"
 )
@@ -19,6 +20,12 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	rdb, err := redis.New(cfg.Redis.Addr)
+	if err != nil {
+		log.Fatalf("failed to connect to redis: %v", err)
+	}
+	defer rdb.Close()
+
 	publisher, err := queue.NewKafka(cfg.Queue.Brokers, cfg.Queue.Topic)
 	if err != nil {
 		log.Fatalf("failed to create queue: %v", err)
@@ -27,7 +34,7 @@ func main() {
 
 	nitter := scraper.NewNitter(cfg.Scraper.Instance)
 
-	w := worker.NewScraper(nitter, publisher, cfg.Scraper)
+	w := worker.NewScraper(nitter, publisher, rdb, cfg.Scraper.Instance, cfg.Scraper.Interval)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
